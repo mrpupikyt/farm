@@ -3,12 +3,9 @@ if game.PlaceId == 1537690962 then
 local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/jensonhirst/Orion/main/source"))()
 
 local snowflakes = false
-
 local coconut = false
-
 local drink = false
-
-local wait = 0.5
+local farmDelay = 0.5 -- Перейменовано з wait
 
 local Window = OrionLib:MakeWindow({
     Name = "MrPup FarmRes",
@@ -25,35 +22,34 @@ local Tab = Window:MakeTab({
 })
 
 Tab:AddToggle({
-	Name = "Snowflakes",
-	Default = false,
-	Callback = function(Value)
-		snowflakes = Value
-	end    
+    Name = "Snowflakes",
+    Default = false,
+    Callback = function(Value) snowflakes = Value end    
 })
 
 Tab:AddToggle({
-	Name = "Coconut",
-	Default = false,
-	Callback = function(Value)
-		coconut = Value
-	end    
+    Name = "Coconut",
+    Default = false,
+    Callback = function(Value) coconut = Value end    
 })
 
 Tab:AddToggle({
-	Name = "Tropical Drink",
-	Default = false,
-	Callback = function(Value)
-		drink = Value
-	end    
+    Name = "Tropical Drink",
+    Default = false,
+    Callback = function(Value) drink = Value end    
 })
 
 Tab:AddTextbox({
-    Name = "wait(sec)(def 0.5)",
-    Default = "",
+    Name = "Wait (sec)",
+    Default = "0.5",
     TextDisappear = false,
     Callback = function(value)
-        wait = value
+        local num = tonumber(value)
+        if num then
+            farmDelay = num
+        else
+            warn("Введіть коректне число!")
+        end
     end
 })
 
@@ -65,45 +61,40 @@ local items = {
 
 task.spawn(function()
     while true do
-        local success, err = pcall(function()
+        -- Якщо жоден режим не включено, чекаємо і пропускаємо цикл
+        if not (snowflakes or coconut or drink) then 
+            task.wait(1) 
+            continue 
+        end
 
-            local folder = game.Workspace:WaitForChild("Collectibles")
+        local success, err = pcall(function()
+            local folder = game.Workspace:FindFirstChild("Collectibles")
+            if not folder then return end
 
             for _, obj in pairs(folder:GetChildren()) do
                 local decal = obj:FindFirstChild("FrontDecal")
-
                 if decal and decal.Texture then
-
-                    if drink and decal.Texture:find(items.drink) then
-                        if not drink then break end
-                        game.Players.LocalPlayer.Character:PivotTo(obj:GetPivot())
-                        task.wait(wait)
-                    end
                     
-                    if snowflakes and decal.Texture:find(items.snowflakes) then
-                        if not snowflakes then break end
-                        game.Players.LocalPlayer.Character:PivotTo(obj:GetPivot())
-                        task.wait(wait)
+                    local shouldTeleport = false
+                    
+                    if drink and decal.Texture:find(items.drink) then shouldTeleport = true end
+                    if snowflakes and decal.Texture:find(items.snowflakes) then shouldTeleport = true end
+                    if coconut and decal.Texture:find(items.coconut) then
+                        if not tostring(obj:GetPivot().Position):find("-312") then
+                            shouldTeleport = true
+                        end
                     end
 
-if coconut and decal.Texture:find(items.coconut) then
-    local posString = tostring(obj:GetPivot().Position)
-    
-    if not posString:find("-312") then
-        game.Players.LocalPlayer.Character:PivotTo(obj:GetPivot())
-        task.wait(wait)
-    end
-end
+                    if shouldTeleport then
+                        game.Players.LocalPlayer.Character:PivotTo(obj:GetPivot())
+                        task.wait(farmDelay) -- Використовуємо нашу змінну
+                    end
                 end
             end
-
         end)
 
-        if not success then
-            warn(err)
-        end
-
-        task.wait(0.3)
+        if not success then warn("Помилка циклу: " .. err) end
+        task.wait(0.5)
     end
 end)
 
